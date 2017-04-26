@@ -1,0 +1,25 @@
+* Workflow
+
+  1. [X] Fetching bundles data
+     1. read cookies from `cookies.json`
+     2. fetch `/home/library`
+     3. find `gamekeys` JS variable with regular expressions in response body
+     4. for each gamekey in parallel do fetch bundle data
+  2. [X] Filtering by platform
+     1. in bundles list leave only downloads for specified platform
+     2. remove bundles without downloads
+  3. [ ] Checking existing files
+     1. for each file in bundles list:
+        1. check if file with such dl_fname exists, calculate it's md5,
+        2. remove it if md5 is incorrect
+        3. otherwise save metadata to dets
+     2. create directory if needed
+     3. calculate busy space
+        Hb.Util.dir_size
+  4. Choosing files to download
+     1. load metadata from dets
+     2. filter out files with metadata in dets
+     3. flattened |> Hb.Dl.filter_size(size_limit)
+  5. Downloading
+     1. Hb.Dl.download
+     2. Save filename => md5 correspondence to dets table
