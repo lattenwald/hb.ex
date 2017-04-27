@@ -1,4 +1,6 @@
 defmodule Hb.CLI do
+  require Logger
+
   @moduledoc """
   Usage: hbex --platform android --to dl/
   """
@@ -13,7 +15,7 @@ defmodule Hb.CLI do
       argv,
       switches: [ help: :boolean,
                   platform: :string,
-                  limit: :integer,
+                  limit: :string,
                   to: :string ],
       aliases: [ h: :help,
                  p: :platform,
@@ -28,7 +30,7 @@ defmodule Hb.CLI do
         parsed
         |> Keyword.put_new(:to, "dl")
         |> Keyword.put_new(:platform, "android")
-        |> Keyword.put_new(:limit, 10000000000)
+        |> Keyword.put_new(:limit, "10G")
     end
   end
 
@@ -49,7 +51,30 @@ defmodule Hb.CLI do
   end
 
   def process(opts) do
-    Hb.run(opts)
+    normalized_opts =
+      Keyword.put(opts, :limit, size_to_int(opts[:limit]))
+
+    opts_str =
+      normalized_opts
+      |> Enum.map(fn {k, v} -> "--#{k} #{v}" end)
+      |> Enum.join(" ")
+    Logger.info "Running with options: #{opts_str}"
+
+    Hb.run(normalized_opts)
   end
+
+  def size_to_int(s) do
+    Regex.named_captures(~r/^(?<size>\d+)(?<unit>(?:[GMKB]|))?$/, s)
+    |> case do
+         %{"unit" => unit, "size" => size} -> String.to_integer(size) * size_int(unit)
+         other -> raise "failed parsing size limit #{inspect s} #{inspect other}"
+       end
+  end
+
+  defp size_int("G"), do: 1000000000
+  defp size_int("M"), do: 1000000
+  defp size_int("K"), do: 1000
+  defp size_int("B"), do: 1
+  defp size_int(""),  do: 1
 
 end

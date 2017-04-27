@@ -41,7 +41,7 @@ defmodule Hb.Dl do
 
     Path.dirname(fname) |> File.mkdir_p!
 
-    Logger.info "downloading #{url}\n to #{fname}"
+    Logger.debug "downloading #{url}\n to #{fname}"
     Stream.resource(
       begin_download,
       continue_download,
@@ -135,9 +135,21 @@ defmodule Hb.Dl do
     files
   end
 
-  def download(%{"url" => %{"web" => dl_url}, "dl_fname" => dl_fname, "md5" => expected_md5}) do
+  def download(
+    %{
+      "url" => %{"web" => dl_url},
+      "dl_fname" => dl_fname,
+      "md5" => expected_md5,
+      "human_size" => hsize,
+      "download" => %{
+        "subproduct" => %{"human_name" => hname}
+      }
+    }
+  ) do
+    Logger.info "downloading #{hname} #{hsize}"
     calculated_md5 = download!(dl_url, dl_fname)
     if calculated_md5 == expected_md5 do
+      Logger.info "#{hname} done"
       :ok
     else
       File.rm! dl_fname
