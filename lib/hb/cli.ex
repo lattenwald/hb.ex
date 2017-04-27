@@ -58,7 +58,8 @@ defmodule Hb.CLI do
       normalized_opts
       |> Enum.map(fn {k, v} -> "--#{k} #{v}" end)
       |> Enum.join(" ")
-    Logger.info "Running with options: #{opts_str}"
+
+    IO.puts "Running with options: #{opts_str}"
 
     Hb.run(normalized_opts)
   end
