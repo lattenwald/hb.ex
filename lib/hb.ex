@@ -8,9 +8,14 @@ defmodule Hb do
 
     File.cd!(dir)
 
+    Logger.warn "fetching bundles info"
+
     flattened = Hb.Dl.bundles |> Hb.Dl.filter_platform(platform) |> Hb.Dl.flatten_bundles()
+    Logger.warn "checking existing files"
 
     flattened |> Hb.Util.check_files(remove: true, save: true)
+
+    Logger.warn "choosing files to download"
 
     dir_size = Hb.Util.dir_size(".")
 
@@ -18,15 +23,18 @@ defmodule Hb do
 
     to_download = flattened |> Hb.Dl.filter_size(free_size)
 
+    Logger.warn "downloading"
+
     to_download
-    |> Enum.map(fn f ->
-      Hb.Dl.download(f)
-      |> case do
-           :ok -> Hb.Util.save_data(f)
-           other ->
-             Logger.warn "failed downloading #{inspect f}"
-         end
-    end)
+    |> Enum.map(&(fn ->
+          Hb.Dl.download(&1)
+          |> case do
+               :ok -> Hb.Util.save_data(&1)
+               _other ->
+                 Logger.warn "failed downloading #{inspect &1}"
+             end
+        end))
+    |> Hb.Para.para(timeout: 60*60*1000, num: 4)
   end
 
 end

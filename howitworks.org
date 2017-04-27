@@ -23,3 +23,13 @@
   5. Downloading
      1. Hb.Dl.download
      2. Save filename => md5 correspondence to dets table
+
+* [2/7] stuff yet to do
+** DONE Limit number of processes downloading bundles info in parallel
+** DONE Download files in parallel
+** TODO CLI help
+** TODO Better (than Logger.*) progress tracking
+** TODO Display expected file size (human-readable)
+** TODO Accept limit in human-readable format
+** TODO Display size of files to download in human-readable format
+** TODO proper README

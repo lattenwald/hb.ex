@@ -36,50 +36,15 @@ defmodule Hb.Util do
         |> Enum.map(&dir_size(Path.join(path, &1)))
         |> Enum.sum
       else
-        err -> 0
+        _err -> 0
       end
     else
       with {:ok, %{size: size, type: :regular}} <- File.lstat(path) do
         size
       else
-        err -> 0
+        _err -> 0
       end
     end
-  end
-
-  defp collect(tasks), do: collect(tasks, [])
-  defp collect(tasks, acc) when map_size(tasks) == 0, do: acc
-  defp collect(tasks, acc) do
-    receive do
-      {ref, res} ->
-        if Map.has_key?(tasks, ref) do
-          collect(Map.delete(tasks, ref), [res | acc])
-        else
-          "unexpected ref"
-        end
-      {:DOWN, _, _, _, _} ->
-        collect(tasks, acc)
-      other ->
-        "unexpected message: #{inspect other}"
-    after
-      5000 ->
-        Logger.warn "failed to collect #{inspect tasks}"
-        acc
-    end
-  end
-
-  def para(stuff, timeout \\ 5000) do
-    # TODO: make it use limited pool
-    stuff
-    |> Enum.map(fn fun ->
-      Task.async(fn ->
-        res = fun.()
-        send(self(), res)
-      end)
-    end)
-    |> Enum.map(&{&1.ref, &1})
-    |> Enum.into(%{})
-    |> collect
   end
 
   def md5(path) do
