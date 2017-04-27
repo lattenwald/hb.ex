@@ -136,20 +136,15 @@ defmodule Hb.Dl do
   end
 
   def download(
-    %{
-      "url" => %{"web" => dl_url},
+    f=%{
+      "url"      => %{"web" => dl_url},
       "dl_fname" => dl_fname,
-      "md5" => expected_md5,
-      "human_size" => hsize,
-      "download" => %{
-        "subproduct" => %{"human_name" => hname}
-      }
+      "md5"      => expected_md5
     }
   ) do
-    Logger.info "downloading #{hname} #{hsize}"
+    Logger.debug "downloading #{inspect f}"
     calculated_md5 = download!(dl_url, dl_fname)
     if calculated_md5 == expected_md5 do
-      Logger.info "#{hname} done"
       :ok
     else
       File.rm! dl_fname

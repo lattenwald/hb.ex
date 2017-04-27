@@ -30,6 +30,7 @@
 ** DONE CLI: size doesn't parse
 ** DONE Accept limit in human-readable format
 ** DONE Display size of files to download in human-readable format
+** DONE Saved data is ignored
 ** TODO CLI help
 ** TODO Better (than Logger.*) progress tracking
 ** TODO proper README

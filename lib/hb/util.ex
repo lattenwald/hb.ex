@@ -68,7 +68,7 @@ defmodule Hb.Util do
       else
         Logger.debug "bad checksum #{fname}, expected #{md5_checksum}, got #{calculated_md5}"
         if Keyword.get(opts, :remove) do
-          Logger.info "removing #{fname}"
+          Logger.warn "removing #{fname}"
           File.rm!(fname)
           :removed
         else
