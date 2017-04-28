@@ -7,6 +7,7 @@ defmodule Hb do
     size_limit = opts[:limit]
 
     File.cd!(dir)
+    {:ok, _pid} = Hb.Saver.start_link()
 
     IO.puts "fetching bundles info"
 

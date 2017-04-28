@@ -2,7 +2,6 @@ defmodule Hb.Util do
   require Logger
 
   @cookies_file "cookies.json"
-  @db_file "db"
 
   def read_cookies(fname \\ @cookies_file) do
     File.read!(fname)
@@ -84,16 +83,37 @@ defmodule Hb.Util do
     flattened_bundles |> Enum.map(&check_file(&1, opts))
   end
 
-  def save_data(%{"dl_fname" => dl_fname, "md5" => md5_checksum}) do
-    data = load_data()
-
-    if data[dl_fname] != md5_checksum do
-      new_data = Map.put(data, dl_fname, md5_checksum)
-      File.write!(@db_file, :erlang.term_to_binary(new_data))
-    end
+  def save_data(f) do
+    Hb.Saver.save(f)
   end
 
   def load_data() do
+    Hb.Saver.load()
+  end
+
+end
+
+defmodule Hb.Saver do
+  require Logger
+
+  @db_file "db"
+
+  use GenServer
+
+  def start_link() do
+    Logger.info "Starting #{__MODULE__}"
+    GenServer.start(__MODULE__, nil, name: __MODULE__)
+  end
+
+  def save(f) do
+    GenServer.call(__MODULE__, {:save, f})
+  end
+
+  def load() do
+    GenServer.call(__MODULE__, :load)
+  end
+
+  defp do_load() do
     File.read(@db_file)
     |> case do
          {:ok, contents} -> :erlang.binary_to_term(contents)
@@ -101,4 +121,26 @@ defmodule Hb.Util do
        end
   end
 
+  def init(_) do
+    {:ok, nil}
+  end
+
+  def handle_call(
+    {:save, %{"dl_fname" => dl_fname, "md5" => md5_checksum}},
+    _from, state
+  ) do
+    data = do_load()
+
+    if data[dl_fname] != md5_checksum do
+      new_data = Map.put(data, dl_fname, md5_checksum)
+      File.write!(@db_file, :erlang.term_to_binary(new_data))
+    end
+
+    {:reply, :ok, state}
+  end
+
+  def handle_call(:load, _from, state) do
+    data = do_load()
+    {:reply, data, state}
+  end
 end

@@ -24,14 +24,14 @@
      1. Hb.Dl.download
      2. Save filename => md5 correspondence to dets table
 
-* [6/10] stuff yet to do
+* [7/10] stuff yet to do
 ** DONE Limit number of processes downloading bundles info in parallel
 ** DONE Download files in parallel
 ** DONE CLI: size doesn't parse
 ** DONE Accept limit in human-readable format
 ** DONE Display size of files to download in human-readable format
 ** DONE Saved data is ignored
-** TODO Saving data via single process
+** DONE Saving data via single process
 ** TODO CLI help
 ** TODO Better (than Logger.*) progress tracking
 ** TODO proper README
