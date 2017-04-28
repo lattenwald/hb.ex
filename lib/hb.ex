@@ -36,19 +36,20 @@ defmodule Hb do
     IO.puts "downloading"
 
     to_download
-    |> Enum.map(&(fn ->
-          hname = &1["download"]["subproduct"]["human_name"]
-          IO.puts "downloading #{hname} (#{&1["human_size"]})"
-          Hb.Dl.download(&1)
-          |> case do
-               :ok ->
-                 Hb.Util.save_data(&1)
-                 IO.puts "finished with #{hname}"
-               _other ->
-                 Logger.warn "failed downloading #{inspect &1}"
-             end
-        end))
-    |> Hb.Para.para(timeout: 60*60*1000, num: 4)
+    |> Flow.from_enumerable(min_demand: 4, max_demand: 6)
+    |> Flow.map(fn f ->
+      hname = f["download"]["subproduct"]["human_name"]
+      IO.puts "downloading #{hname} (#{f["human_size"]})"
+      Hb.Dl.download(f)
+      |> case do
+           :ok ->
+             Hb.Util.save_data(f)
+             IO.puts "finished with #{hname}"
+           _other ->
+             Logger.warn "failed downloading #{inspect f}"
+         end
+    end)
+    |> Flow.run
   end
 
 end

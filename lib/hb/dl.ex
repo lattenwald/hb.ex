@@ -72,8 +72,9 @@ defmodule Hb.Dl do
 
   def bundles do
     gamekeys()
-    |> Enum.map(&(fn -> bundle(&1) end))
-    |> Hb.Para.para(timeout: 30000, num: 10)
+    |> Flow.from_enumerable(min_demand: 4, max_demand: 5)
+    |> Flow.map(&bundle(&1))
+    |> Enum.to_list
   end
 
   def filter_platform(bundles, platform) when is_list(bundles) do

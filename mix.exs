@@ -17,6 +17,7 @@ defmodule Hb.Mixfile do
     [
       {:httpoison, "~> 0.11.1"},
       {:poison, "~> 3.1"},
+      {:flow, "~> 0.11.1"},
     ]
   end
 end
