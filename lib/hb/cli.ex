@@ -2,7 +2,53 @@ defmodule Hb.CLI do
   require Logger
 
   @moduledoc """
-  Usage: hbex --platform android --to dl/
+  Usage: `hb.ex --platform android --to dl/ --limit 15G`
+
+  Available platforms:
+
+    * android
+    * linux
+    * mac
+    * windows
+    * ebook
+    * audio
+
+  --limit accepts maximum download directory size in formats
+
+    * 10000 is 10000 bytes
+    * 10000B is 10000 bytes
+    * 10K is 10 kilobytes
+    * 10M is 10 megabytes
+    * 10G is 10 gigabytes
+
+  Downloads directory (the one in `--to` parameter) should have `cookies.json` file
+  with cookies for humblebundle.com in the following format:
+
+      [
+          {
+              "domain": ".humblebundle.com",
+              "name": "btIdentify",
+              "value": "20fa45f4-1234-4236-db4f-327164388976qwr"
+          },
+          {
+              "domain": "www.humblebundle.com",
+              "name": "_simpleauth_sess",
+              "value": "\"eyJ1c2VyX2NTU3fQ\\075\\075|1485690557|40dd0c1d5a0f18eb14bc7e3168e14850951ef2db\""
+          },
+          ...
+      ]
+
+  other fields in JSON structures are ignored. Recommended way to get cookies into this file is with [EditThisCookie](http://www.editthiscookie.com/) browser extension.
+
+  Database of downloaded items is stored in downloads directory
+  (the one in `--to` parameter) in file `db`. You can move downloaded stuff, while you leave database file in place nothing will be re-downloaded.
+
+  Intended usage:
+
+      ./hb.ex --platform android --to dl # download stuff into dl/ directory
+      mv dl/android ~/cloud/             # move downloaded stuff to cloud storage
+      ./hb.ex --platform android --to dl # download few gigabytes more
+      # repeat
   """
   def main(argv) do
     argv
@@ -46,7 +92,7 @@ defmodule Hb.CLI do
   end
 
   def process(:help) do
-    IO.puts "Nobody will help you" # TODO:
+    IO.puts @moduledoc
     System.halt(0)
   end
 
