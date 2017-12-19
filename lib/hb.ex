@@ -9,43 +9,63 @@ defmodule Hb do
     File.cd!(dir)
     {:ok, _pid} = Hb.Saver.start_link()
 
-    IO.puts "fetching bundles info"
+    flattened =
+      ProgressBar.render_spinner([
+        frames: :braille,
+        text: "Fetching bundles info",
+        done: "✔ Fetching bundles info",
+      ], fn ->
+        Hb.Dl.bundles |> Hb.Dl.filter_platform(platform) |> Hb.Dl.flatten_bundles()
+      end)
 
-    flattened = Hb.Dl.bundles |> Hb.Dl.filter_platform(platform) |> Hb.Dl.flatten_bundles()
-    IO.puts "checking existing files"
+    ProgressBar.render_spinner([
+      frames: :braille,
+      text: "Checking existing files",
+      done: "✔ Checking existing files",
+    ], fn ->
+      flattened |> Hb.Util.check_files(remove: true, save: true)
+    end)
 
-    flattened |> Hb.Util.check_files(remove: true, save: true)
+    {to_download, not_yet_downloaded, free_size} =
+      ProgressBar.render_spinner([
+        frames: :braille,
+        text: "Choosing files to download",
+        done: "✔ Choosing files to download",
+      ], fn ->
+        dir_size = Hb.Util.dir_size(".")
+        saved_data = Hb.Util.load_data()
+        not_yet_downloaded = flattened |> Enum.filter(&(!Map.has_key?(saved_data, &1["dl_fname"])))
+		not_yet_downloaded_size = not_yet_downloaded |> Enum.map(&(&1["file_size"])) |> Enum.sum
+        free_size = min(size_limit - dir_size, not_yet_downloaded_size+1)
+        to_download = not_yet_downloaded |> Hb.Dl.filter_size(free_size)
+        {to_download, not_yet_downloaded, free_size}
+      end)
 
-    IO.puts "choosing files to download"
+    IO.puts "Downloading #{length(to_download)}/#{length(not_yet_downloaded)} files"
 
-    dir_size = Hb.Util.dir_size(".")
+    {:ok, dl_progress} = Agent.start_link(fn -> 0 end)
 
-    free_size = size_limit - dir_size
-
-    saved_data = Hb.Util.load_data()
-
-    IO.puts "total count #{length flattened}"
-
-    not_yet_downloaded = flattened |> Enum.filter(&(!Map.has_key?(saved_data, &1["dl_fname"])))
-
-    IO.puts "not yet downloaded #{length not_yet_downloaded}"
-
-    to_download = not_yet_downloaded |> Hb.Dl.filter_size(free_size)
-
-    IO.puts "to download #{length to_download}"
-
-    IO.puts "downloading"
+    {:ok, dl_files} = Agent.start_link(fn -> MapSet.new end)
 
     to_download
-    |> Flow.from_enumerable(min_demand: 4, max_demand: 6)
+    |> Flow.from_enumerable(min_demand: 1, max_demand: 5)
     |> Flow.map(fn f ->
       hname = f["download"]["subproduct"]["human_name"]
-      IO.puts "downloading #{hname} (#{f["human_size"]})"
-      Hb.Dl.download(f)
+
+      id_str = "#{hname} (#{f["human_size"]})"
+
+      Agent.update(dl_files, &MapSet.put(&1, id_str))
+      IO.puts "downloading #{id_str}"
+
+      Hb.Dl.download(f, fn data ->
+        Agent.update(dl_progress, &(&1 + byte_size(data)))
+        ProgressBar.render(Agent.get(dl_progress, &(&1)), free_size)
+      end)
       |> case do
            :ok ->
+             Agent.update(dl_files, &MapSet.delete(&1, id_str))
              Hb.Util.save_data(f)
-             IO.puts "finished with #{hname}"
+             IO.puts "\n"
            _other ->
              Logger.warn "failed downloading #{inspect f}"
          end

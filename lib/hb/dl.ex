@@ -14,7 +14,7 @@ defmodule Hb.Dl do
     )
   end
 
-  def download!(url, fname) do
+  def download!(url, fname, callback) do
     begin_download = fn ->
       Logger.debug "begin_download"
       {:ok, 200, _headers, client} =
@@ -27,6 +27,7 @@ defmodule Hb.Dl do
       :hackney.stream_body(client)
       |> case do
            {:ok, data} ->
+             if is_function(callback), do: callback.(data)
              {[data], client}
            :done ->
              {:halt, client}
@@ -136,15 +137,17 @@ defmodule Hb.Dl do
     files
   end
 
+  def download(f), do: download(f, nil)
   def download(
     f=%{
       "url"      => %{"web" => dl_url},
       "dl_fname" => dl_fname,
       "md5"      => expected_md5
-    }
+    },
+    callback
   ) do
     Logger.debug "downloading #{inspect f}"
-    calculated_md5 = download!(dl_url, dl_fname)
+    calculated_md5 = download!(dl_url, dl_fname, callback)
     if calculated_md5 == expected_md5 do
       :ok
     else
