@@ -7,18 +7,19 @@ defmodule Hb.Dl do
   def url(path), do: "https://#{@domain}/#{path}"
 
   def get!(path) do
-    Logger.info "fetching #{path}"
+    Logger.info("fetching #{path}")
+
     HTTPoison.get!(
-      url(path), %{},
+      url(path),
+      %{},
       hackney: [cookie: [Hb.Util.cookie_header(@domain)], timeout: @timeout]
     )
   end
 
   def download!(url, fname, callback) do
     begin_download = fn ->
-      Logger.debug "begin_download"
-      {:ok, 200, _headers, client} =
-        :hackney.get(url, [], "")
+      Logger.debug("begin_download")
+      {:ok, 200, _headers, client} = :hackney.get(url, [], "")
       client
     end
 
@@ -26,23 +27,26 @@ defmodule Hb.Dl do
       # Logger.debug "continue_download"
       :hackney.stream_body(client)
       |> case do
-           {:ok, data} ->
-             if is_function(callback), do: callback.(data)
-             {[data], client}
-           :done ->
-             {:halt, client}
-           {:error, reason} ->
-             raise reason
-         end
+        {:ok, data} ->
+          if is_function(callback), do: callback.(data)
+          {[data], client}
+
+        :done ->
+          {:halt, client}
+
+        {:error, reason} ->
+          raise reason
+      end
     end
 
     finish_download = fn _client ->
-      Logger.debug "finish_download"
+      Logger.debug("finish_download")
     end
 
-    Path.dirname(fname) |> File.mkdir_p!
+    Path.dirname(fname) |> File.mkdir_p!()
 
-    Logger.debug "downloading #{url}\n to #{fname}"
+    Logger.debug("downloading #{url}\n to #{fname}")
+
     Stream.resource(
       begin_download,
       continue_download,
@@ -50,12 +54,12 @@ defmodule Hb.Dl do
     )
     |> Stream.into(File.stream!(fname))
     |> Enum.reduce(:crypto.hash_init(:md5), &:crypto.hash_update(&2, &1))
-    |> :crypto.hash_final |> Base.encode16(case: :lower)
+    |> :crypto.hash_final()
+    |> Base.encode16(case: :lower)
   end
 
   def gamekeys do
-    %{status_code: 200, body: body} =
-      get!("home/library")
+    %{status_code: 200, body: body} = get!("home/library")
 
     Regex.named_captures(~r/var gamekeys =\s*\[(?<gamekeys>.*?)\]/, body)["gamekeys"]
     |> String.split(", ")
@@ -64,27 +68,27 @@ defmodule Hb.Dl do
   end
 
   def bundle(key) do
-    %{status_code: 200, body: body} =
-      get!("api/v1/order/#{key}?all_tpkds=true")
+    %{status_code: 200, body: body} = get!("api/v1/order/#{key}?all_tpkds=true")
 
     body
-    |> Poison.decode!
+    |> Poison.decode!()
   end
 
   def bundles do
     gamekeys()
-    |> Flow.from_enumerable(min_demand: 4, max_demand: 5)
-    |> Flow.map(&bundle(&1))
-    |> Enum.to_list
+    |> Task.async_stream(&bundle(&1), max_concurrency: 5, timeout: :infinity)
+    |> Stream.map(fn {:ok, bundle} -> bundle end)
+    |> Enum.to_list()
   end
 
   def filter_platform(bundles, platform) when is_list(bundles) do
     bundles
     |> Stream.map(&filter_platform(&1, platform))
-    |> Enum.filter(&not(is_nil(&1)))
+    |> Enum.filter(&(not is_nil(&1)))
   end
+
   def filter_platform(bundle, platform) do
-    extract_platform_downloads = fn(subproduct) ->
+    extract_platform_downloads = fn subproduct ->
       case Enum.filter(subproduct["downloads"], &(&1["platform"] == platform)) do
         [] -> nil
         dls -> %{subproduct | "downloads" => dls}
@@ -92,12 +96,12 @@ defmodule Hb.Dl do
     end
 
     bundle["subproducts"]
-      |> Stream.map(&extract_platform_downloads.(&1))
-      |> Enum.filter(&not(is_nil(&1)))
-      |> case  do
-           [] -> nil
-           subproducts -> %{bundle | "subproducts" => subproducts}
-         end
+    |> Stream.map(&extract_platform_downloads.(&1))
+    |> Enum.filter(&(not is_nil(&1)))
+    |> case do
+      [] -> nil
+      subproducts -> %{bundle | "subproducts" => subproducts}
+    end
   end
 
   defp to_top(map, key, name) do
@@ -111,21 +115,27 @@ defmodule Hb.Dl do
     |> Stream.flat_map(&to_top(&1, "downloads", "subproduct"))
     |> Stream.flat_map(&to_top(&1, "download_struct", "download"))
     |> Stream.filter(&Map.has_key?(&1, "url"))
-    |> Stream.map(&Map.put(&1, "dl_fname",
+    |> Stream.map(
+      &Map.put(
+        &1,
+        "dl_fname",
         Path.join([
           &1["download"]["platform"],
           Regex.replace(
             ~r/[^\da-zA-Z \-_\.]/,
             &1["download"]["subproduct"]["human_name"],
             "_",
-            global: true),
+            global: true
+          ),
           URI.parse(&1["url"]["web"]).path
-        ])))
+        ])
+      )
+    )
     |> Enum.into([])
   end
 
   def filter_size(bundles, size_limit, initial_size \\ 0) do
-    folder = fn flattened=%{"file_size" => fsize}, acc={bundles_acc, size_acc} ->
+    folder = fn flattened = %{"file_size" => fsize}, acc = {bundles_acc, size_acc} ->
       if fsize + size_acc >= size_limit do
         acc
       else
@@ -138,24 +148,25 @@ defmodule Hb.Dl do
   end
 
   def download(f), do: download(f, nil)
+
   def download(
-    f=%{
-      "url"      => %{"web" => dl_url},
-      "dl_fname" => dl_fname,
-      "md5"      => expected_md5
-    },
-    callback
-  ) do
-    Logger.debug "downloading #{inspect f}"
+        f = %{
+          "url" => %{"web" => dl_url},
+          "dl_fname" => dl_fname,
+          "md5" => expected_md5
+        },
+        callback
+      ) do
+    Logger.debug("downloading #{inspect(f)}")
     calculated_md5 = download!(dl_url, dl_fname, callback)
+
     if calculated_md5 == expected_md5 do
       :ok
     else
-      File.rm! dl_fname
+      File.rm!(dl_fname)
       {:error, :invalid_checksum}
     end
   end
-
 end
 
 # bundle = %{
