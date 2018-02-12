@@ -35,7 +35,7 @@ defmodule Hb do
         dir_size = Hb.Util.dir_size(".")
         saved_data = Hb.Util.load_data()
         not_yet_downloaded = flattened |> Enum.filter(&(!Map.has_key?(saved_data, &1["dl_fname"])))
-		not_yet_downloaded_size = not_yet_downloaded |> Enum.map(&(&1["file_size"])) |> Enum.sum
+        not_yet_downloaded_size = not_yet_downloaded |> Enum.map(&(&1["file_size"])) |> Enum.sum
         free_size = min(size_limit - dir_size, not_yet_downloaded_size+1)
         to_download = not_yet_downloaded |> Hb.Dl.filter_size(free_size)
         {to_download, not_yet_downloaded, free_size}
@@ -48,8 +48,7 @@ defmodule Hb do
     {:ok, dl_files} = Agent.start_link(fn -> MapSet.new end)
 
     to_download
-    |> Flow.from_enumerable(min_demand: 1, max_demand: 5)
-    |> Flow.map(fn f ->
+    |> Task.async_stream(fn f ->
       hname = f["download"]["subproduct"]["human_name"]
 
       id_str = "#{hname} (#{f["human_size"]})"
@@ -69,8 +68,8 @@ defmodule Hb do
            _other ->
              Logger.warn "failed downloading #{inspect f}"
          end
-    end)
-    |> Flow.run
+    end, max_concurrency: 5, timeout: :infinity)
+    |> Stream.run
   end
 
 end
