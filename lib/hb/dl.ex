@@ -35,7 +35,7 @@ defmodule Hb.Dl do
           {:halt, client}
 
         {:error, reason} ->
-          raise reason
+          raise "#{inspect(reason)}"
       end
     end
 
@@ -61,7 +61,7 @@ defmodule Hb.Dl do
   def gamekeys do
     %{status_code: 200, body: body} = get!("home/library")
 
-    Regex.named_captures(~r/var gamekeys =\s*\[(?<gamekeys>.*?)\]/, body)["gamekeys"]
+    Regex.named_captures(~r/"gamekeys":\s*\[(?<gamekeys>.*?)\]/, body)["gamekeys"]
     |> String.split(", ")
     |> Enum.map(&String.trim_leading(&1, "\""))
     |> Enum.map(&String.trim_trailing(&1, "\""))
