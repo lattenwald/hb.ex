@@ -3,8 +3,8 @@ defmodule Hb.Mixfile do
 
   def project do
     [app: :hb,
-     version: "0.1.0",
-     elixir: "~> 1.4",
+     version: "0.1.1",
+     elixir: "~> 1.7",
      escript: [main_module: Hb.CLI, name: "hb.ex"],
      deps: deps()]
   end
@@ -15,8 +15,8 @@ defmodule Hb.Mixfile do
 
   defp deps do
     [
-      {:httpoison, "~> 0.11.1"},
-      {:poison, "~> 3.1"},
+      {:httpoison, "~> 1.4"},
+      {:poison, "~> 4.0"},
       {:progress_bar, "~> 1.6"},
     ]
   end
